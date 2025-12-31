@@ -1,0 +1,27 @@
+# Web Scraping
+scrapy
+scrapy-splash
+
+# Apache Spark (PySpark)
+pyspark
+
+# MongoDB
+pymongo
+
+# Flask (for API)
+flask
+
+# Data Processing
+pandas
+numpy
+
+# Data Analysis & ML
+scikit-learn
+
+# Visualization (if using Plotly)
+plotly
+
+# For Jupyter Notebooks
+jupyter
+# Others
+requests

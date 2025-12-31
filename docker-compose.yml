@@ -1,0 +1,190 @@
+services:
+  # MongoDB Container
+  mongodb:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./scripts:/app/scripts
+    environment:
+      - MONGO_INITDB_DATABASE=research_db
+    networks:
+      - big_data_network
+
+  # Hadoop HDFS (Hadoop Distributed File System)
+  hadoop-namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-namenode
+    environment:
+      - CLUSTER_NAME=research-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+    ports:
+      - "9870:9870" # Web UI for Hadoop
+      - "9000:9000" # HDFS port
+    volumes:
+      - hadoop_namenode_data:/hadoop/dfs/name
+      - ./data:/app/data
+    networks:
+      - big_data_network
+
+  hadoop-datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-datanode
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+    ports:
+      - "9864:9864" # Web UI for Datanode
+    volumes:
+      - hadoop_datanode_data:/hadoop/dfs/data
+      - ./data:/app/data
+    depends_on:
+      - hadoop-namenode
+    networks:
+      - big_data_network
+
+  # Apache Spark Master
+  spark-master:
+    image: apache/spark:3.5.0
+    container_name: spark-master
+    ports:
+      - "8080:8080" # Web UI for Spark
+      - "7077:7077" # Spark master port
+    environment:
+      - SPARK_MODE=master
+    volumes:
+      - ./spark_jobs:/app/spark_jobs
+      - ./data:/app/data
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    networks:
+      - big_data_network
+
+  # Apache Spark Worker
+  spark-worker:
+    image: apache/spark:3.5.0
+    container_name: spark-worker
+    ports:
+      - "4040:4040" # Web UI for Spark worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER=spark://spark-master:7077
+    volumes:
+      - ./data:/app/data
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    depends_on:
+      - spark-master
+    networks:
+      - big_data_network
+
+
+  # Smart Data Router
+  smart-router:
+    build: ./smart-router
+    container_name: smart-router
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - mongodb
+      - hadoop-namenode
+      - spark-master
+    networks:
+      - big_data_network
+
+  # Flask API (Optional - for serving data analysis results)
+  flask-api:
+    build: ./flask-api
+    container_name: flask-api
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      - mongodb
+    networks:
+      - big_data_network
+
+  # Pipeline Monitor
+  monitor:
+    image: python:3.10-slim
+    container_name: pipeline-monitor
+    working_dir: /app
+    volumes:
+      - ./scripts:/app/scripts
+    command: ["sh", "-c", "pip install requests && python scripts/pipeline_monitor.py"]
+    depends_on:
+      - flask-api
+      - mongodb
+    networks:
+      - big_data_network
+
+  # Automatic Spark Analysis Service
+  spark-analyzer:
+    image: apache/spark:3.5.0
+    container_name: spark-analyzer
+    working_dir: /app
+    volumes:
+      - ./spark_jobs:/app/spark_jobs
+      - ./data:/app/data
+      - ./scripts:/app/scripts
+    command: ["sh", "-c", "cp /app/scripts/auto_spark_analysis.sh /tmp/analysis.sh && chmod +x /tmp/analysis.sh && /tmp/analysis.sh"]
+    depends_on:
+      - spark-master
+      - spark-worker
+    networks:
+      - big_data_network
+
+  # HDFS Storage Service
+  hdfs-storage:
+    image: python:3.10-slim
+    container_name: hdfs-storage
+    working_dir: /app
+    volumes:
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["sh", "-c", "apt-get update && apt-get install -y docker.io && pip install docker && sleep 15 && python -u scripts/hdfs_auto_storage.py"]
+    depends_on:
+      - hadoop-namenode
+    networks:
+      - big_data_network
+
+  # Data Storage Service
+  data-storage:
+    image: python:3.10-slim
+    container_name: data-storage
+    working_dir: /app
+    volumes:
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+    command: ["sh", "-c", "pip install pymongo && sleep 10 && echo 'Starting storage service...' && python -u scripts/data_storage_service.py"]
+    depends_on:
+      - mongodb
+      - hadoop-namenode
+    networks:
+      - big_data_network
+
+  # Scrapy Container (for scraping)
+  scrapy:
+    image: python:3.10-slim
+    container_name: scrapy
+    working_dir: /app
+    volumes:
+      - ./scrapy_project:/app
+      - ./data:/app/data
+    command: ["sh", "-c", "pip install scrapy && sleep 5 && mkdir -p data && cp periodic_scrape.sh /tmp/scrape.sh && chmod +x /tmp/scrape.sh && /tmp/scrape.sh"]
+    networks:
+      - big_data_network
+
+# Volumes for data persistence
+volumes:
+  mongo_data:
+  hadoop_namenode_data:
+  hadoop_datanode_data:
+
+# Networks for communication between containers
+networks:
+  big_data_network:
+    driver: bridge

@@ -1,0 +1,52 @@
+# Data files
+data/
+*.json
+
+# Docker volumes
+mongo_data/
+hadoop_namenode_data/
+hadoop_datanode_data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node modules (if any)
+node_modules/
+
+# Build directories
+build/
+dist/
+target/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Large files
+*.zip
+*.tar.gz
+*.rar
+
+# OneDrive sync files
+*.tmp
+~$*
