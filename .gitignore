@@ -50,3 +50,6 @@ target/
 # OneDrive sync files
 *.tmp
 ~$*
+
+# venv
+/venv/
