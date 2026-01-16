@@ -10,7 +10,7 @@ def store_files_to_hdfs():
     
     while True:
         try:
-            json_files = glob.glob("/app/data/quotes*.json")
+            json_files = glob.glob("/app/data/research*.json") + glob.glob("/app/data/quotes*.json")
             new_files = [f for f in json_files if f not in processed_files]
             
             if new_files:
@@ -42,8 +42,8 @@ def store_files_to_hdfs():
         except Exception as e:
             print(f"HDFS storage error: {e}")
         
-        print("Sleeping for 30 seconds...")
-        time.sleep(30)
+        print("Sleeping for 1 minute...")
+        time.sleep(60)
 
 if __name__ == "__main__":
     print("Starting automated HDFS storage service...")

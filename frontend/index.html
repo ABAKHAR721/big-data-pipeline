@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Data Analytics Platform</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 2rem 1.5rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 3rem;
+        }
+
+        .nav-item {
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+
+        /* Search Section */
+        .search-section {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 0.875rem 1.25rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 0.75rem;
+            color: #e2e8f0;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .data-source-toggle {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 0.25rem;
+            border-radius: 0.75rem;
+        }
+
+        .toggle-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+        }
+
+        /* Map Container */
+        .map-container {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            height: 500px;
+        }
+
+        #map {
+            height: 100%;
+            border-radius: 0.75rem;
+        }
+
+        /* Results Grid */
+        .results-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .result-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-card:hover {
+            border-color: #3b82f6;
+            transform: translateX(5px);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .result-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .meta-tag {
+            padding: 0.25rem 0.75rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            color: #3b82f6;
+        }
+
+        .result-abstract {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-mongo {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-hdfs {
+            background: rgba(139, 92, 246, 0.1);
+            color: #8b5cf6;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+        }
+
+        .spinner {
+            border: 3px solid rgba(59, 130, 246, 0.1);
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #10b981;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">📊 Research Analytics</div>
+            <div class="nav-item active" onclick="showSection('dashboard')">
+                <span>🏠</span> Dashboard
+            </div>
+            <div class="nav-item" onclick="showSection('search')">
+                <span>🔍</span> Search
+            </div>
+            <div class="nav-item" onclick="showSection('map')">
+                <span>🗺️</span> Global Map
+            </div>
+            <div class="nav-item" onclick="showSection('analytics')">
+                <span>📈</span> Analytics
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="header">
+                <div>
+                    <h1>Research Data Platform</h1>
+                    <div class="live-indicator">
+                        <div class="pulse"></div>
+                        <span>Live Data Stream</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalDocs">0</div>
+                    <div class="stat-label">Total Research Papers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalKeywords">0</div>
+                    <div class="stat-label">Research Keywords</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalCountries">0</div>
+                    <div class="stat-label">Countries</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="dataSource">MongoDB</div>
+                    <div class="stat-label">Active Data Source</div>
+                </div>
+            </div>
+
+            <!-- Search Section -->
+            <div class="search-section">
+                <div class="search-header">
+                    <h2>Intelligent Search</h2>
+                    <div class="data-source-toggle">
+                        <button class="toggle-btn active" onclick="setDataSource('auto')">Auto</button>
+                        <button class="toggle-btn" onclick="setDataSource('mongo')">MongoDB</button>
+                        <button class="toggle-btn" onclick="setDataSource('hdfs')">HDFS</button>
+                    </div>
+                </div>
+                <div class="search-box">
+                    <input type="text" class="search-input" id="searchInput" 
+                           placeholder="Search research papers..." 
+                           onkeypress="if(event.key==='Enter') performSearch()">
+                    <button class="btn btn-primary" onclick="performSearch()">Search</button>
+                </div>
+                <!-- Smart Filters with Dropdowns -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <select class="search-input" id="keywordFilter" style="padding: 0.5rem 1rem;">
+                        <option value="">All Keywords</option>
+                    </select>
+                    <select class="search-input" id="countryFilter" style="padding: 0.5rem 1rem;">
+                        <option value="">All Countries</option>
+                    </select>
+                    <select class="search-input" id="yearFilter" style="padding: 0.5rem 1rem;">
+                        <option value="">All Years</option>
+                    </select>
+                    <button class="btn" onclick="clearFilters()" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;">Clear All</button>
+                </div>
+            </div>
+
+            <!-- Map Container -->
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+
+            <!-- Results -->
+            <div class="results-grid" id="resultsGrid"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let markers = [];
+        let currentDataSource = 'auto';
+        const API_BASE = 'http://localhost:5001';  // Use smart router only
+        const SMART_ROUTER = 'http://localhost:5001';
+
+        // Initialize Map
+        function initMap() {
+            map = L.map('map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        // Load dynamic filter options from database
+        async function loadFilterOptions() {
+            try {
+                // Load keywords
+                const keywordsRes = await fetch(`${API_BASE}/keywords`);
+                const keywordsData = await keywordsRes.json();
+                const keywordSelect = document.getElementById('keywordFilter');
+                keywordsData.keywords.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.keyword;
+                    option.textContent = `${item.keyword} (${item.count})`;
+                    keywordSelect.appendChild(option);
+                });
+                
+                // Load countries
+                const countriesRes = await fetch(`${API_BASE}/countries`);
+                const countriesData = await countriesRes.json();
+                const countrySelect = document.getElementById('countryFilter');
+                countriesData.countries.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.country;
+                    option.textContent = `${item.country} (${item.count})`;
+                    countrySelect.appendChild(option);
+                });
+                
+                // Load years
+                const yearsRes = await fetch(`${API_BASE}/years`);
+                const yearsData = await yearsRes.json();
+                const yearSelect = document.getElementById('yearFilter');
+                yearsData.years.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.year;
+                    option.textContent = `${item.year} (${item.count})`;
+                    yearSelect.appendChild(option);
+                });
+                
+                // Add change listeners to auto-search on filter change
+                keywordSelect.addEventListener('change', performSearch);
+                countrySelect.addEventListener('change', performSearch);
+                yearSelect.addEventListener('change', performSearch);
+                
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+            }
+        }
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats/raw_data`);
+                const data = await response.json();
+                
+                document.getElementById('totalDocs').textContent = data.total_documents || 0;
+                
+                if (data.dynamic_stats) {
+                    document.getElementById('totalKeywords').textContent = data.dynamic_stats.unique_keywords || 0;
+                    document.getElementById('totalCountries').textContent = data.dynamic_stats.unique_countries || 0;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Load Map Data
+        async function loadMapData() {
+            try {
+                const response = await fetch(`${API_BASE}/data/raw_data?limit=100`);
+                const result = await response.json();
+                
+                // Clear existing markers
+                markers.forEach(marker => map.removeLayer(marker));
+                markers = [];
+                
+                // Add new markers
+                result.data.forEach(item => {
+                    if (item.latitude && item.longitude) {
+                        const marker = L.circleMarker([item.latitude, item.longitude], {
+                            radius: 8,
+                            fillColor: '#3b82f6',
+                            color: '#fff',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map);
+                        
+                        marker.bindPopup(`
+                            <div style="color: #1e293b;">
+                                <strong>${item.title || 'Research Paper'}</strong><br>
+                                <em>${item.affiliation || 'Unknown'}</em><br>
+                                ${item.city}, ${item.country}<br>
+                                <span style="color: #3b82f6;">${item.keyword || ''}</span>
+                            </div>
+                        `);
+                        
+                        markers.push(marker);
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading map data:', error);
+            }
+        }
+
+        // Set Data Source
+        function setDataSource(source) {
+            currentDataSource = source;
+            document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('dataSource').textContent = source.toUpperCase();
+        }
+
+        // Perform Search with smart filters
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value;
+            const keyword = document.getElementById('keywordFilter').value;
+            const country = document.getElementById('countryFilter').value;
+            const year = document.getElementById('yearFilter').value;
+            const resultsGrid = document.getElementById('resultsGrid');
+            
+            resultsGrid.innerHTML = '<div class="loading"><div class="spinner"></div>Searching...</div>';
+            
+            try {
+                const params = new URLSearchParams();
+                
+                if (query) params.append('q', query);
+                if (keyword) params.append('keyword', keyword);
+                if (country) params.append('country', country);
+                if (year) params.append('year', year);
+                params.append('limit', '1000');  // Get all results for accurate counts
+                
+                if (currentDataSource === 'hdfs') {
+                    params.append('p1', '1');
+                    params.append('p2', '1');
+                    params.append('p3', '1');
+                    params.append('p4', '1');
+                    params.append('p5', '1');
+                    params.append('p6', '1');
+                }
+                
+                const url = `${SMART_ROUTER}/smart-search/raw_data?${params.toString()}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                const results = data.results || data.data || [];
+                
+                displayResults(results.slice(0, 50), data.source || 'MongoDB');  // Show first 50
+                updateMapWithResults(results);
+                document.getElementById('totalDocs').textContent = results.length;
+                
+                // Update dropdown counts based on filtered results
+                updateDropdownCounts(results, keyword, country, year);
+            } catch (error) {
+                resultsGrid.innerHTML = '<div class="loading">Error loading results</div>';
+                console.error('Search error:', error);
+            }
+        }
+        
+        // Update dropdown counts dynamically based on current results
+        function updateDropdownCounts(results, currentKeyword, currentCountry, currentYear) {
+            // Count keywords in filtered results
+            const keywordCounts = {};
+            const countryCounts = {};
+            const yearCounts = {};
+            
+            results.forEach(item => {
+                if (item.keyword) keywordCounts[item.keyword] = (keywordCounts[item.keyword] || 0) + 1;
+                if (item.country) countryCounts[item.country] = (countryCounts[item.country] || 0) + 1;
+                if (item.year) yearCounts[item.year] = (yearCounts[item.year] || 0) + 1;
+            });
+            
+            // Update keyword dropdown
+            if (!currentKeyword) {
+                const keywordSelect = document.getElementById('keywordFilter');
+                const selectedValue = keywordSelect.value;
+                keywordSelect.innerHTML = '<option value="">All Keywords</option>';
+                Object.entries(keywordCounts).sort((a, b) => b[1] - a[1]).forEach(([kw, count]) => {
+                    const option = document.createElement('option');
+                    option.value = kw;
+                    option.textContent = `${kw} (${count})`;
+                    if (kw === selectedValue) option.selected = true;
+                    keywordSelect.appendChild(option);
+                });
+            }
+            
+            // Update country dropdown
+            if (!currentCountry) {
+                const countrySelect = document.getElementById('countryFilter');
+                const selectedValue = countrySelect.value;
+                countrySelect.innerHTML = '<option value="">All Countries</option>';
+                Object.entries(countryCounts).sort((a, b) => b[1] - a[1]).forEach(([country, count]) => {
+                    const option = document.createElement('option');
+                    option.value = country;
+                    option.textContent = `${country} (${count})`;
+                    if (country === selectedValue) option.selected = true;
+                    countrySelect.appendChild(option);
+                });
+            }
+            
+            // Update year dropdown
+            if (!currentYear) {
+                const yearSelect = document.getElementById('yearFilter');
+                const selectedValue = yearSelect.value;
+                yearSelect.innerHTML = '<option value="">All Years</option>';
+                Object.entries(yearCounts).sort((a, b) => a[0].localeCompare(b[0])).forEach(([year, count]) => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = `${year} (${count})`;
+                    if (year === selectedValue) option.selected = true;
+                    yearSelect.appendChild(option);
+                });
+            }
+        }
+        
+        // Update map with search results
+        function updateMapWithResults(results) {
+            console.log('Updating map with', results.length, 'results');
+            
+            // Clear ALL existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            if (results.length === 0) {
+                console.log('No results to show on map');
+                return;
+            }
+            
+            // Add new markers from filtered results ONLY
+            results.forEach(item => {
+                if (item.latitude && item.longitude) {
+                    const marker = L.circleMarker([item.latitude, item.longitude], {
+                        radius: 10,
+                        fillColor: '#ef4444',
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.9
+                    }).addTo(map);
+                    
+                    marker.bindPopup(`
+                        <div style="color: #1e293b;">
+                            <strong>${item.title || 'Research Paper'}</strong><br>
+                            <em>${item.affiliation || 'Unknown'}</em><br>
+                            ${item.city}, ${item.country}<br>
+                            <span style="color: #3b82f6;">${item.keyword || ''}</span>
+                        </div>
+                    `);
+                    
+                    markers.push(marker);
+                }
+            });
+            
+            // Fit map to show all filtered markers
+            if (markers.length > 0) {
+                const group = L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.2));
+            }
+        }
+        
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('keywordFilter').value = '';
+            document.getElementById('countryFilter').value = '';
+            document.getElementById('yearFilter').value = '';
+            document.getElementById('resultsGrid').innerHTML = '';
+            loadStats();
+            loadMapData();
+        }
+
+        // Display Results
+        function displayResults(results, source) {
+            const resultsGrid = document.getElementById('resultsGrid');
+            
+            if (results.length === 0) {
+                resultsGrid.innerHTML = '<div class="loading">No results found</div>';
+                return;
+            }
+            
+            resultsGrid.innerHTML = results.map(item => `
+                <div class="result-card">
+                    <div class="result-header">
+                        <div>
+                            <div class="result-title">${item.title || 'Untitled'}</div>
+                            <div class="result-meta">
+                                <span class="meta-tag">📚 ${item.keyword || 'General'}</span>
+                                <span class="meta-tag">👤 ${item.authors || item.author || 'Unknown'}</span>
+                                <span class="meta-tag">📅 ${item.year || 'N/A'}</span>
+                                <span class="meta-tag">🌍 ${item.country || 'Unknown'}</span>
+                            </div>
+                        </div>
+                        <span class="badge ${source.includes('HDFS') ? 'badge-hdfs' : 'badge-mongo'}">
+                            ${source}
+                        </span>
+                    </div>
+                    <div class="result-abstract">
+                        ${item.abstract || item.text || 'No abstract available'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Auto-refresh data every 30 seconds
+        setInterval(() => {
+            loadStats();
+            loadMapData();
+        }, 30000);
+
+        // Initialize
+        window.onload = () => {
+            initMap();
+            loadStats();
+            loadMapData();
+            loadFilterOptions();  // Load smart filter options
+        };
+    </script>
+</body>
+</html>

@@ -1,12 +1,30 @@
-# Define here the models for your scraped items
-#
-# See documentation in:
-# https://docs.scrapy.org/en/latest/topics/items.html
-
 import scrapy
 
-
-class ScrapyProjectItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+class DynamicDataItem(scrapy.Item):
+    # Core fields for any data type
+    title = scrapy.Field()
+    source = scrapy.Field() 
+    timestamp = scrapy.Field()
+    data_type = scrapy.Field()
+    
+    # Research paper fields (arXiv)
+    authors = scrapy.Field()
+    year = scrapy.Field()
+    abstract = scrapy.Field()
+    keyword = scrapy.Field()
+    affiliation = scrapy.Field()
+    country = scrapy.Field()
+    city = scrapy.Field()
+    latitude = scrapy.Field()
+    longitude = scrapy.Field()
+    
+    # Quote fields (backward compatibility)
+    text = scrapy.Field()
+    author = scrapy.Field()
+    tags = scrapy.Field()
+    
+    # Generic fields for future data types
+    category = scrapy.Field()
+    description = scrapy.Field()
+    url = scrapy.Field()
+    metadata = scrapy.Field()

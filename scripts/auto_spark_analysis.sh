@@ -5,11 +5,11 @@ echo "🚀 Starting automatic Spark analysis service..."
 while true; do
     echo "$(date): Waiting for data files..."
     
-    # Check if there are JSON files to analyze
-    if ls /app/data/quotes*.json 1> /dev/null 2>&1; then
+    # Check if there are JSON files to analyze - support multiple data types
+    if ls /app/data/research*.json 1> /dev/null 2>&1 || ls /app/data/quotes*.json 1> /dev/null 2>&1; then
         echo "$(date): Found data files, starting Spark analysis..."
         
-        # Run Spark analysis with full path
+        # Run dynamic Spark analysis
         /opt/spark/bin/spark-submit --master spark://spark-master:7077 --conf spark.sql.adaptive.enabled=false /app/spark_jobs/analyze_quotes.py
         
         echo "$(date): Spark analysis completed"

@@ -9,7 +9,7 @@ services:
       - mongo_data:/data/db
       - ./scripts:/app/scripts
     environment:
-      - MONGO_INITDB_DATABASE=research_db
+      - MONGO_INITDB_DATABASE=dynamic_data_db
     networks:
       - big_data_network
 
@@ -163,6 +163,17 @@ services:
     depends_on:
       - mongodb
       - hadoop-namenode
+    networks:
+      - big_data_network
+
+  # Frontend Dashboard
+  dashboard:
+    image: nginx:alpine
+    container_name: dashboard
+    ports:
+      - "8000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
     networks:
       - big_data_network
 

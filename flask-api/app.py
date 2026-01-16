@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 import json
 import os
 from pymongo import MongoClient
@@ -6,20 +7,24 @@ from collections import Counter
 from datetime import datetime
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
-# MongoDB connection
+# MongoDB connection - dynamic database
 client = MongoClient('mongodb://mongodb:27017/')
-db = client.research_db
+db = client.dynamic_data_db
 
 @app.route('/')
 def home():
     return jsonify({
-        "message": "Research Data API", 
+        "message": "Dynamic Data API", 
+        "version": "2.0",
+        "supported_data_types": ["research_papers", "quotes", "generic"],
         "endpoints": [
             "/data/<collection>",
             "/stats/<collection>", 
             "/search/<collection>",
-            "/collections"
+            "/collections",
+            "/analytics"
         ]
     })
 
@@ -28,8 +33,22 @@ def get_collections():
     collections = db.list_collection_names()
     stats = {}
     for col in collections:
-        stats[col] = db[col].count_documents({})
-    return jsonify({"collections": collections, "document_counts": stats})
+        count = db[col].count_documents({})
+        # Detect data type
+        sample = db[col].find_one()
+        data_type = "unknown"
+        if sample:
+            if 'keyword' in sample and 'authors' in sample:
+                data_type = "research_papers"
+            elif 'text' in sample and 'author' in sample:
+                data_type = "quotes"
+        
+        stats[col] = {
+            "count": count,
+            "data_type": data_type
+        }
+    
+    return jsonify({"collections": collections, "stats": stats})
 
 @app.route('/data/<collection>')
 def get_data(collection):
@@ -63,10 +82,31 @@ def get_stats(collection):
             "stored_at": {"$gte": datetime.now().replace(hour=0, minute=0, second=0)}
         })
         
+        # Dynamic stats based on data type
+        sample = db[collection].find_one()
+        dynamic_stats = {}
+        
+        if sample:
+            if 'keyword' in sample:  # Research papers
+                keywords = db[collection].distinct('keyword')
+                countries = db[collection].distinct('country')
+                years = db[collection].distinct('year')
+                dynamic_stats = {
+                    "unique_keywords": len(keywords),
+                    "unique_countries": len(countries),
+                    "year_range": f"{min(years)} - {max(years)}" if years else "N/A"
+                }
+            elif 'author' in sample:  # Quotes
+                authors = db[collection].distinct('author')
+                dynamic_stats = {
+                    "unique_authors": len(authors)
+                }
+        
         return jsonify({
             "collection": collection,
             "total_documents": total,
             "recent_documents": recent,
+            "dynamic_stats": dynamic_stats,
             "last_updated": datetime.now().isoformat()
         })
     except Exception as e:
@@ -81,13 +121,28 @@ def search_data(collection):
         if not query:
             return jsonify({"error": "Query parameter 'q' is required"}), 400
         
-        # Simple search
-        results = list(db[collection].find({
-            "$or": [
-                {"text": {"$regex": query, "$options": "i"}},
-                {"author": {"$regex": query, "$options": "i"}}
-            ]
-        }).limit(limit))
+        # Dynamic search based on collection structure
+        sample = db[collection].find_one()
+        search_fields = []
+        
+        if sample:
+            if 'title' in sample:  # Research papers
+                search_fields = [
+                    {"title": {"$regex": query, "$options": "i"}},
+                    {"authors": {"$regex": query, "$options": "i"}},
+                    {"keyword": {"$regex": query, "$options": "i"}},
+                    {"abstract": {"$regex": query, "$options": "i"}}
+                ]
+            elif 'text' in sample:  # Quotes
+                search_fields = [
+                    {"text": {"$regex": query, "$options": "i"}},
+                    {"author": {"$regex": query, "$options": "i"}}
+                ]
+        
+        if not search_fields:
+            return jsonify({"error": "No searchable fields found"}), 400
+        
+        results = list(db[collection].find({"$or": search_fields}).limit(limit))
         
         # Convert ObjectId to string
         for item in results:
@@ -109,6 +164,23 @@ def search_data(collection):
             "query": query,
             "collection": collection
         }), 500
+
+@app.route('/analytics')
+def get_analytics():
+    """Load Spark analysis results"""
+    try:
+        analysis_file = "/app/data/analysis_results.json"
+        if os.path.exists(analysis_file):
+            with open(analysis_file, 'r') as f:
+                analytics_data = json.load(f)
+            return jsonify(analytics_data)
+        else:
+            return jsonify({
+                "message": "No analytics data available. Run Spark analysis first.",
+                "status": "no_data"
+            })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
