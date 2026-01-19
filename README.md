@@ -1,6 +1,6 @@
 # 📊 Dynamic Big Data Pipeline - Research Analytics Platform
 
-**Author:** [Your Name]  
+**Author:** ABAKHAR Abdessamad 
 **Project:** Mini-Projet Big Data  
 **Date:** January 2026  
 **GitHub:** https://github.com/ABAKHAR721/big-data-pipeline.git
